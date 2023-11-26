@@ -1,0 +1,12 @@
+{
+    "verbose": false,
+	"interfaceAndPort": "localhost:20000",
+	"responseFile": "response.txt",
+    "responseContentType": "text; charset=UTF-8",
+    "responseCode": 200,
+    "sqliteDatabase": "honeyDB.sqlite",
+    "smtpServer": "<smtp server>",
+    "smtpPort": 587,
+    "smtpUser": "<username>",
+    "smtpPassword": "<please add password here>"
+}
