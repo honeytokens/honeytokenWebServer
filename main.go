@@ -15,7 +15,7 @@ import (
 )
 
 // config filename
-const configFile = "config.json"
+const defaultConfigFile = "config.json"
 
 // Timeout is the amount of time the server will wait for requests to finish during shutdown
 const Timeout = 10 * time.Second
@@ -34,7 +34,7 @@ type Configuration struct {
 	SMTPPassword        string `json:"smtpPassword"`
 }
 
-func initConfig() (configuration Configuration, err error) {
+func initConfig(configFile string) (configuration Configuration, err error) {
 	// get configuration from config json
 	file, err := os.Open(configFile)
 	if err != nil {
@@ -54,24 +54,14 @@ func main() {
 	errorLogger := log.New(os.Stderr, "", 0)
 	debugLogger := log.New(io.Discard, "", 0)
 
-	// get configuration
-	configuration, err := initConfig()
-	if err != nil {
-		errorLogger.Fatalln(err.Error())
-	}
-
 	// evaluate command line flags
 	var help bool
-	var verbose bool
+	var configFile string
 	flags := flag.NewFlagSet("honeytokenWebServer", flag.ContinueOnError)
 	flags.BoolVar(&help, "help", false, "Show this help message")
 	flags.BoolVar(&help, "h", false, "")
-	flags.BoolVar(&verbose, "v", configuration.VerboseOutput, "Show verbose logging.")
-	flags.StringVar(&configuration.InterfaceAndPort, "interfaceAndPort", configuration.InterfaceAndPort, "interface and port e.g. localhost:50000 or :50000 for all interfaces")
-	flags.StringVar(&configuration.ResponseFile, "responseFile", configuration.ResponseFile, "the file that will be sent as response to every request")
-	flags.StringVar(&configuration.ResponseContentType, "responseContentType", configuration.ResponseContentType, "the Content-Type response header")
-	flags.IntVar(&configuration.ResponseCode, "responseCode", configuration.ResponseCode, "the response code (e.g. 200)")
-	err = flags.Parse(os.Args[1:])
+	flags.StringVar(&configFile, "configFile", defaultConfigFile, "JSON config file")
+	err := flags.Parse(os.Args[1:])
 	switch err {
 	case flag.ErrHelp:
 		help = true
@@ -85,6 +75,13 @@ func main() {
 		os.Exit(0)
 	}
 
+	// get configuration
+	configuration, err := initConfig(configFile)
+	if err != nil {
+		errorLogger.Fatalln(err.Error())
+	}
+
+	verbose := configuration.VerboseOutput
 	if verbose {
 		debugLogger = log.New(os.Stderr, "DEBUG: ", 0)
 	}
@@ -101,6 +98,9 @@ func main() {
 	}
 	if configuration.ResponseCode == 0 {
 		errorLogger.Fatalln("ResponseCode not set in config.json")
+	}
+	if configuration.SqliteDatabase == "" {
+		errorLogger.Fatalln("SqliteDatabase not set in config.json")
 	}
 
 	// check if response file exists before starting server

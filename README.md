@@ -2,9 +2,8 @@
 
 ## Introduction
 
-TODO
+Simple honeytoken server that handles HTTP-based honeytokens.
 
-
-## Acknowledgements:
+## Acknowledgements
 
 xxx
