@@ -28,10 +28,10 @@ type Configuration struct {
 	ResponseContentType string `json:"responseContentType"`
 	ResponseCode        int    `json:"responseCode"`
 	SqliteDatabase      string `json:"sqliteDatabase"`
-	SmtpServer          string `json:"smtpServer"`
-	SmtpPort            int    `json:"smtpPort"`
-	SmtpUser            string `json:"smtpUser"`
-	SmtpPassword        string `json:"smtpPassword"`
+	SMTPServer          string `json:"smtpServer"`
+	SMTPPort            int    `json:"smtpPort"`
+	SMTPUser            string `json:"smtpUser"`
+	SMTPPassword        string `json:"smtpPassword"`
 }
 
 func initConfig() (configuration Configuration, err error) {

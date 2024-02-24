@@ -1,9 +1,9 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"os"
 )
 
@@ -15,21 +15,43 @@ type App struct {
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestDump, _ := httputil.DumpRequest(r, true)
-	defer r.Body.Close()
 
-	a.ErrorLogger.Println("Incoming URL: " + r.RequestURI + " Client IP: " + r.RemoteAddr)
-	a.DebugLogger.Println("Serving incoming request:\n", string(requestDump))
+	// Get HTTP headers
+	var headerAsString string
+	for name, values := range r.Header {
+		for _, value := range values {
+			headerAsString += name + ": " + value + "\n"
+		}
+	}
 
+	// get Body
+	var requestBody string
+	if r.Method != http.MethodGet {
+		// get post Body
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		requestBody = string(b)
+	}
+
+	a.ErrorLogger.Println("Incoming URL: " + r.RequestURI + "\nClient IP: " +
+		r.RemoteAddr + "\n==Header==:\n" + headerAsString + "\n==Body==:\n" + requestBody)
+
+	// check if configured token has been requested
 	token, err := Find(r.RequestURI)
 	if err != nil {
 		a.ErrorLogger.Println("Could not find token due to error: ", err)
 		// don't abort here, just behave as normal to prevent token enumeration
 	} else {
 		a.ErrorLogger.Printf("Found token: %d\n", token.ID)
-		msg := "Incoming URL: " + r.RequestURI + "\r\n" +
-			"Client IP: " + r.RemoteAddr + "\r\n"
-		go Alert(a.Config.SmtpServer, a.Config.SmtpPort, a.Config.SmtpUser, a.Config.SmtpPassword, token.NotifyReceiver, msg)
+		msg := "Token Title: " + token.Title +
+			"\r\nToken Comment: " + token.Comment +
+			"\r\nRequested URL: " + r.RequestURI +
+			"\r\nClient IP: " + r.RemoteAddr +
+			"\r\n\r\n==Header==\r\n" + headerAsString +
+			"\r\n==Body==\r\n" + requestBody
+		go Alert(a.Config.SMTPServer, a.Config.SMTPPort, a.Config.SMTPUser, a.Config.SMTPPassword, token.NotifyReceiver, msg)
 	}
 
 	response, err := readResponseFromFile(a.Config.ResponseFile)

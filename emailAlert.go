@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// Alert sends an alert via email
 func Alert(smtpHost string, smtpPort int, user, password, receiver, message string) {
 
 	// Receiver email address.

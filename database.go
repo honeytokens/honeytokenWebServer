@@ -12,16 +12,19 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// HoneyTokensDatabase is where the configured honeytokens are stored
 var HoneyTokensDatabase *gorm.DB
 
+// Honeytoken struct represents the database structure for the honeytokens
 type Honeytoken struct {
 	ID             uint   `json:"id" gorm:"primary_key"`
-	Url            string `json:"url"`
+	URL            string `json:"url"`
 	Title          string `json:"title"`
 	Comment        string `json:"comment"`
 	NotifyReceiver string `json:"notifyReceiver"`
 }
 
+// ConnectDatabase opens the database for requests
 func ConnectDatabase(file string) error {
 	// init Non-Default Logger
 	newLogger := logger.New(
@@ -49,6 +52,7 @@ func ConnectDatabase(file string) error {
 	return nil
 }
 
+// Find searches for an url and returns an Honeytoken if found
 func Find(url string) (Honeytoken, error) {
 	var tokenFound Honeytoken
 	result := HoneyTokensDatabase.Find(&tokenFound, "url = ?", url)
