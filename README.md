@@ -8,7 +8,7 @@ Simple honeytoken server that handles HTTP URL based honeytokens.
 
 Inspired by <https://canarytokens.org>, but was looking for something simpler and easier to maintain in a selfhosted environment.
 
-## Setup
+## Basic Setup
 
 ### Build
 
@@ -71,6 +71,8 @@ The following columnes need to be filled:
 - `comment`: A description you can freely select. Recommendation is to describe in detail where this Honeytoken has been deployed, so you are able to tell which system/file/dataset has been compromised.
 - `notify_receiver`: E-Mail address of the intended receiver of the alert, e.g. `alerts@example.com`.
 
+You can use any SQLite client to edit the database, e.g. <https://sqlitebrowser.org/>.
+
 ### Run Server
 
 Execute the server on Linux via
@@ -88,3 +90,137 @@ Starting honeytokenWebServer with interface "localhost:20000" response file "res
 ```
 
 Note: It is recommended to use a reverse proxy (e.g. [Traefik](https://traefik.io/traefik/) or [NGINX](https://www.nginx.com/)) to provide services via HTTPS and allow multiple services on the same server via the same port.
+
+## Deployment via Ansible / Docker
+
+You can easily deploy the Honeytoken web server using Docker and Ansible.
+
+Some examples to get you started, using a Traefik proxy with TLS using Lets Encrypt (the Traefik installation and configuration is not included):
+
+A sample Dockerfile for creating the Honeytoken web server container:
+
+```
+FROM gcr.io/distroless/static
+LABEL maintainer="honeytokens"
+USER nonroot:nonroot
+COPY --chown=nonroot:nonroot honeytokenWebServer /
+LABEL traefik.enable=true
+LABEL traefik.http.routers.honey.rule=Host(`web.example.com`)
+LABEL traefik.http.routers.honey.entrypoints=websecure
+LABEL traefik.http.routers.honey.tls=true
+LABEL traefik.http.routers.honey.tls.certresolver=letsencrypt
+LABEL traefik.http.services.honey.loadBalancer.server.port=20000
+CMD ["/honeytokenWebServer","-configFile","/config/config.json"]
+```
+
+In this case the JSON config file must be mapped as volume from the servers filesystem to the container at `/config`.
+
+The following Ansible tasks file installs the docker container on a Linux server:
+
+```
+---
+
+# this tasks expect a working docker and traefik installation (traefik with `web` network)
+
+- name: Create honeytokenWebServer folder
+  become: true
+  ansible.builtin.file:
+    path: /opt/honeytokenWebServercontainer
+    state: directory
+    mode: '0755'
+    
+- name: Create honeytokenWebServer/config folder
+  become: true
+  ansible.builtin.file:
+    path: /opt/honeytokenWebServercontainer/config
+    state: directory
+    mode: '0755'
+    
+- name: Copy honeytokenWebServer binary
+  become: true
+  copy:
+    src: honeytokenWebServer
+    dest: /opt/honeytokenWebServercontainer/honeytokenWebServer
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Copy honeytokenWebServer Token DB
+  become: true
+  copy:
+    src: honeyDB.sqlite
+    dest: /opt/honeytokenWebServercontainer/config/honeyDB.sqlite
+    owner: root
+    group: root
+    mode: '0655'
+
+- name: Copy honeytokenWebServer config.json
+  become: true
+  copy:
+    src: config.json
+    dest: /opt/honeytokenWebServercontainer/config/config.json
+    owner: root
+    group: root
+    mode: '0655'
+
+- name: Copy honeytokenWebServer response.txt
+  become: true
+  copy:
+    src: response.txt
+    dest: /opt/honeytokenWebServercontainer/config/response.txt
+    owner: root
+    group: root
+    mode: '0655'
+
+- name: Copy Dockerfile
+  become: true
+  copy:
+    src: Dockerfile
+    dest: /opt/honeytokenWebServercontainer/Dockerfile
+    owner: root
+    group: root
+    mode: '0655'
+
+# remove old container, if exist
+- name: Tear down existing honeytokenWebServer containers
+  community.docker.docker_container:
+    name: honeytokenwebserver
+    state: absent
+    container_default_behavior: no_defaults
+
+# remove old image, if exists, to enforce updates
+- name: Remove honeytokenwebserver image
+  docker_image:
+    state: absent
+    name: honeytokenwebserver:v1.0
+
+# remove old image, if exists, to enforce updates
+- name: Remove distroless image
+  docker_image:
+    state: absent
+    name: gcr.io/distroless/static
+
+# docker build -t honeytokenwebserver .
+- name: Build honeytokenwebserver container
+  community.docker.docker_image:
+    name: honeytokenwebserver:v1.0
+    build: 
+      path: /opt/honeytokenWebServercontainer
+    source: build
+    state: present
+
+# docker run --restart always --name honeytokenwebserver --network=web -d honeytokenwebserver [...]
+- name: Run the honeytokenWebServer container
+  community.docker.docker_container:
+    name: honeytokenwebserver
+    image: honeytokenwebserver:v1.0
+    state: started
+    restart: yes
+    restart_policy: unless-stopped
+    container_default_behavior: no_defaults
+    volumes:
+      - "/opt/honeytokenWebServercontainer/config:/config"
+    network_mode: default
+    networks:
+      - name: "web"
+```
