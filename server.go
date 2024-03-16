@@ -45,12 +45,23 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		a.DebugLogger.Printf("Found token: %d\n", token.ID)
 
+		// find out real ip if we are behind a proxy
+		var realIP = r.RemoteAddr
+		if r.Header["X-Forwarded-For"] != nil && r.Header["X-Forwarded-For"][0] != "" {
+			realIP = r.Header["X-Forwarded-For"][0]
+		}
+		if r.Header["X-Real-Ip"] != nil && r.Header["X-Real-Ip"][0] != "" {
+			realIP = r.Header["X-Real-Ip"][0]
+		}
+
+		// generate message for alert notification
 		msg := "Token Title: " + token.Title +
 			"\r\nToken Comment: " + token.Comment +
-			"\r\nClient IP: " + r.RemoteAddr +
+			"\r\nClient IP: " + realIP +
 			"\r\n\r\n==Header==\r\n" + headerAsString +
 			"\r\n==Body==\r\n" + requestBody
 
+		// send alert
 		go Alert(a, token.NotifyReceiver, msg)
 	}
 

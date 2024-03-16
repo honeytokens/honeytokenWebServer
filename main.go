@@ -102,6 +102,18 @@ func main() {
 	if configuration.SqliteDatabase == "" {
 		errorLogger.Fatalln("SqliteDatabase not set in config.json")
 	}
+	if configuration.SMTPServer == "" {
+		errorLogger.Fatalln("SMTPServer not set in config.json")
+	}
+	if configuration.SMTPUser == "" {
+		errorLogger.Fatalln("SMTPUser not set in config.json")
+	}
+	if configuration.SMTPPort == 0 {
+		errorLogger.Fatalln("SMTPPort not set in config.json")
+	}
+	if configuration.SMTPPassword == "" {
+		errorLogger.Fatalln("SMTPPassword not set in config.json")
+	}
 
 	// check if response file exists before starting server
 	if !fileExists(configuration.ResponseFile) {
@@ -167,13 +179,19 @@ func printHelp(flags *flag.FlagSet) {
 	flags.PrintDefaults()
 	fmt.Printf(`
 
-To configure honeytokenWebServer you can also use a config.json file. Example:
+To configure honeytokenWebServer you can must use a config.json file. Example:
 
-	{
-		"verbose": false,
-		"interfaceAndPort": "localhost:20000",
-		"responseFile": "response2.txt",
-		"responseContentType": "text/xml; charset=UTF-8"
-	}
+{
+    "verbose": false,
+	"interfaceAndPort": "localhost:20000",
+	"responseFile": "response.txt",
+    "responseContentType": "text; charset=UTF-8",
+    "responseCode": 200,
+    "sqliteDatabase": "honeyDB.sqlite",
+    "smtpServer": "<smtp server>",
+    "smtpPort": 587,
+    "smtpUser": "<username>",
+    "smtpPassword": "<please add password here>"
+}
 `)
 }
