@@ -1,13 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"net/smtp"
 	"strconv"
 )
 
 // Alert sends an alert via email
-func Alert(smtpHost string, smtpPort int, user, password, receiver, message string) {
+func Alert(appConfig *App, receiver, message string) {
+	user := appConfig.Config.SMTPUser
+	password := appConfig.Config.SMTPPassword
+	smtpHost := appConfig.Config.SMTPServer
+	smtpPort := appConfig.Config.SMTPPort
 
 	// Receiver email address.
 	to := []string{
@@ -25,8 +28,8 @@ func Alert(smtpHost string, smtpPort int, user, password, receiver, message stri
 	// Sending email.
 	err := smtp.SendMail(smtpHost+":"+strconv.Itoa(smtpPort), auth, user, to, []byte(mailHeader+message))
 	if err != nil {
-		fmt.Println(err)
+		appConfig.ErrorLogger.Println(err)
 		return
 	}
-	fmt.Println("Email Sent Successfully!")
+	appConfig.DebugLogger.Println("Email sent successfully to " + receiver + "!")
 }

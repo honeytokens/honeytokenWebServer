@@ -15,8 +15,7 @@ type App struct {
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	// Get HTTP headers
+	// get HTTP headers
 	var headerAsString string
 	for name, values := range r.Header {
 		for _, value := range values {
@@ -35,7 +34,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestBody = string(b)
 	}
 
-	a.ErrorLogger.Println("Incoming URL: " + r.RequestURI + "\nClient IP: " +
+	a.DebugLogger.Println("Incoming URL: " + r.RequestURI + "\nClient IP: " +
 		r.RemoteAddr + "\n==Header==:\n" + headerAsString + "\n==Body==:\n" + requestBody)
 
 	// check if configured token has been requested
@@ -44,16 +43,18 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.ErrorLogger.Println("Could not find token due to error: ", err)
 		// don't abort here, just behave as normal to prevent token enumeration
 	} else {
-		a.ErrorLogger.Printf("Found token: %d\n", token.ID)
+		a.DebugLogger.Printf("Found token: %d\n", token.ID)
+
 		msg := "Token Title: " + token.Title +
 			"\r\nToken Comment: " + token.Comment +
-			"\r\nRequested URL: " + r.RequestURI +
 			"\r\nClient IP: " + r.RemoteAddr +
 			"\r\n\r\n==Header==\r\n" + headerAsString +
 			"\r\n==Body==\r\n" + requestBody
-		go Alert(a.Config.SMTPServer, a.Config.SMTPPort, a.Config.SMTPUser, a.Config.SMTPPassword, token.NotifyReceiver, msg)
+
+		go Alert(a, token.NotifyReceiver, msg)
 	}
 
+	// respond to HTTP request
 	response, err := readResponseFromFile(a.Config.ResponseFile)
 	if err != nil {
 		a.ErrorLogger.Println("Could not read "+a.Config.ResponseFile+" file due to error:", err)
